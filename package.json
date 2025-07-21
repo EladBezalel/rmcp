@@ -1,6 +1,6 @@
 {
   "name": "@rmcp/cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Boot MCP servers from folders with predefined tool APIs",
   "type": "module",
   "main": "src/index.ts",
@@ -31,5 +31,6 @@
   },
   "engines": {
     "bun": ">=1.0.0"
-  }
+  },
+  "preferredRuntime": "bun"
 }
