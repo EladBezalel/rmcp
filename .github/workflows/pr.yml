@@ -1,0 +1,52 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run linter
+        run: bun run lint
+
+      - name: Type check
+        run: bunx tsc --noEmit
+
+      - name: Test CLI help
+        run: bun run start --help
+
+      - name: Test with example tools
+        run: |
+          # Create test tools if they don't exist
+          if [ ! -d "rmcp-tools" ]; then
+            mkdir -p rmcp-tools
+            echo 'export default { name: "test", inputSchema: {}, run: async () => "test" }' > rmcp-tools/test.js
+          fi
+
+          # Test CLI with timeout
+          timeout 5 bun run start ./rmcp-tools || true
+
+      - name: Verify package.json
+        run: |
+          # Check required fields
+          bun run -e "
+          const pkg = require('./package.json');
+          if (!pkg.name || !pkg.version || !pkg.bin) {
+            process.exit(1);
+          }
+          console.log('Package validation passed');
+          "

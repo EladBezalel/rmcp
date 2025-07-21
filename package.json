@@ -1,0 +1,35 @@
+{
+  "name": "@rmcp/cli",
+  "version": "1.0.0",
+  "description": "Boot MCP servers from folders with predefined tool APIs",
+  "type": "module",
+  "main": "src/index.ts",
+  "bin": {
+    "cli": "./src/cli.ts"
+  },
+  "scripts": {
+    "dev": "bun --watch run src/cli.ts",
+    "start": "bun run src/cli.ts",
+    "lint": "oxlint src"
+  },
+  "keywords": [
+    "mcp",
+    "cli",
+    "tools",
+    "automation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "commander": "^12.0.0",
+    "chalk": "^5.3.0"
+  },
+  "devDependencies": {
+    "bun-types": "^1.2.19",
+    "oxlint": "^1.7.0"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}
