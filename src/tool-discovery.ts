@@ -69,7 +69,7 @@ export class ToolDiscovery {
           name: toolObj?.name,
           hasRunFn: typeof toolObj?.run === 'function',
           hasInputSchema: !!toolObj?.inputSchema,
-          keys: Object.keys(toolObj || {})
+          keys: Object.keys(toolObj ?? {})
         });
         return null;
       }

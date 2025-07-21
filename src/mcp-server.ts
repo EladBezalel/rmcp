@@ -33,7 +33,7 @@ export class MCPServer {
       return {
         tools: this.tools.map(tool => ({
           name: tool.name,
-          description: tool.description || '',
+          description: tool.description ?? '',
           inputSchema: tool.inputSchema
         }))
       };
@@ -48,7 +48,7 @@ export class MCPServer {
       }
 
       try {
-        const result = await tool.run(args || {});
+        const result = await tool.run(args ?? {});
         return {
           content: [
             {
@@ -72,7 +72,7 @@ export class MCPServer {
     console.error(`MCP server started with ${this.tools.length} tools:`);
     this.tools.forEach(tool => {
       console.error(
-        `  - ${tool.name}: ${tool.description || 'No description'}`
+        `  - ${tool.name}: ${tool.description ?? 'No description'}`
       );
     });
   }
