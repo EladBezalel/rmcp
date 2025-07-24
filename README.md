@@ -10,7 +10,7 @@ Run directly with Bun (no installation required):
 # Run directly
 bunx @rmcp/cli
 
-# Or install globally  
+# Or install globally
 bun install -g @rmcp/cli
 ```
 
@@ -30,6 +30,7 @@ By default, rmcp looks for tools in the `./rmcp-tools` directory in your current
 
 - `-n, --name <name>`: Server name (default: "rmcp")
 - `-s, --server-version <version>`: Server version (default: "1.0.0")
+- `-a, --addTool [toolName]`: Generate a new tool file (default: "example-tool")
 
 ### Examples
 
@@ -53,10 +54,10 @@ Tools must export a default object that implements this interface:
 
 ```typescript
 export interface Tool<S extends TSchema = TSchema, Ctx = unknown> {
-    readonly name: string;
-    readonly description?: string;
-    readonly inputSchema: S;
-    readonly run: (args: StaticDecode<S>, ctx: Ctx) => Promise<string>;
+  readonly name: string;
+  readonly description?: string;
+  readonly inputSchema: S;
+  readonly run: (args: StaticDecode<S>, ctx: Ctx) => Promise<string>;
 }
 ```
 
@@ -68,14 +69,14 @@ export interface Tool<S extends TSchema = TSchema, Ctx = unknown> {
 const { Type } = require('@sinclair/typebox');
 
 const myTool = {
-    name: 'echo',
-    description: 'Echoes back the input message',
-    inputSchema: Type.Object({
-        message: Type.String({ description: 'The message to echo back' })
-    }),
-    run: async (args, ctx) => {
-        return `Echo: ${args.message}`;
-    }
+  name: 'echo',
+  description: 'Echoes back the input message',
+  inputSchema: Type.Object({
+    message: Type.String({ description: 'The message to echo back' })
+  }),
+  run: async (args, ctx) => {
+    return `Echo: ${args.message}`;
+  }
 };
 
 module.exports = { default: myTool };
@@ -88,30 +89,31 @@ import { Type, StaticDecode } from '@sinclair/typebox';
 import { Tool } from '../src/types.js';
 
 const timestampSchema = Type.Object({
-    format: Type.Optional(Type.Union([
-        Type.Literal('iso'),
-        Type.Literal('unix'), 
-        Type.Literal('readable')
-    ], { description: 'Format for the timestamp', default: 'iso' }))
+  format: Type.Optional(
+    Type.Union(
+      [Type.Literal('iso'), Type.Literal('unix'), Type.Literal('readable')],
+      { description: 'Format for the timestamp', default: 'iso' }
+    )
+  )
 });
 
 const timestampTool: Tool<typeof timestampSchema> = {
-    name: 'timestamp',
-    description: 'Returns the current timestamp in various formats',
-    inputSchema: timestampSchema,
-    run: async (args: StaticDecode<typeof timestampSchema>, _ctx) => {
-        const now = new Date();
-        
-        switch (args.format) {
-            case 'unix':
-                return `Unix timestamp: ${Math.floor(now.getTime() / 1000)}`;
-            case 'readable':
-                return `Readable: ${now.toLocaleString()}`;
-            case 'iso':
-            default:
-                return `ISO timestamp: ${now.toISOString()}`;
-        }
+  name: 'timestamp',
+  description: 'Returns the current timestamp in various formats',
+  inputSchema: timestampSchema,
+  run: async (args: StaticDecode<typeof timestampSchema>, _ctx) => {
+    const now = new Date();
+
+    switch (args.format) {
+      case 'unix':
+        return `Unix timestamp: ${Math.floor(now.getTime() / 1000)}`;
+      case 'readable':
+        return `Readable: ${now.toLocaleString()}`;
+      case 'iso':
+      default:
+        return `ISO timestamp: ${now.toISOString()}`;
     }
+  }
 };
 
 export default timestampTool;
@@ -168,6 +170,75 @@ Once running, add the server to your Claude/Cursor MCP configuration:
 - ✅ **Type Safety**: Full TypeScript support with proper typing
 - ✅ **Auto Discovery**: Automatically finds and loads all `.js`, `.ts`, and `.mjs` files
 - ✅ **Error Handling**: Graceful error handling for malformed tools
+
+## Tool Generator
+
+The `--addTool` option provides an intelligent tool generator that creates new tool files based on your project setup. It automatically detects your project type and generates appropriate templates.
+
+### Basic Usage
+
+```bash
+# Generate a tool with default name "example-tool"
+bunx @rmcp/cli --addTool
+
+# Generate a tool with custom name
+bunx @rmcp/cli --addTool my-custom-tool
+
+# Generate in specific folder
+bunx @rmcp/cli ./my-tools --addTool my-tool
+```
+
+### Project Type Detection
+
+The generator automatically detects your project setup and creates appropriate files:
+
+#### Standalone CommonJS Tool
+
+Generated when no `package.json` exists or TypeScript support is not detected:
+
+- Creates a `.js` file
+- No external dependencies
+- Self-contained implementation
+
+#### TypeScript Tool
+
+Generated when TypeScript support is detected (via `tsconfig.json` or TypeScript dependency):
+
+- Creates a `.ts` file
+- Proper type imports
+- Automatically installs `@rmcp/cli` dependency if needed
+
+#### Inside rmcp Repository
+
+When running inside the rmcp repository itself:
+
+- Uses relative imports to local type definitions
+- No dependency installation needed
+
+### Tool Naming Rules
+
+Tool names must follow these conventions:
+
+- **kebab-case format only**: `my-tool`, `data-processor`, `api-client`
+- **Lowercase letters and hyphens only**
+- **Cannot use reserved names**: `index`, `cli`, `server`, `types`, `tool-discovery`, `mcp-server`
+
+### Package Manager Support
+
+The generator automatically detects and uses your preferred package manager:
+
+- **Bun**: Detects `bun.lockb`
+- **pnpm**: Detects `pnpm-lock.yaml`
+- **Yarn**: Detects `yarn.lock`
+- **npm**: Detects `package-lock.json` (default fallback)
+
+### Conflict Detection
+
+The generator prevents naming conflicts:
+
+- Checks existing tool files in the target directory
+- Compares names case-insensitively
+- Provides clear error messages with suggestions
 
 ## Development
 
