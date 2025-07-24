@@ -1,6 +1,6 @@
 {
   "name": "@rmcp/cli",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Boot MCP servers from folders with predefined tool APIs",
   "type": "module",
   "main": "src/index.ts",
@@ -10,7 +10,9 @@
   "scripts": {
     "dev": "bun --watch run src/cli.ts",
     "start": "bun run src/cli.ts",
-    "lint": "oxlint src"
+    "lint": "oxlint src",
+    "format": "prettier --write \"**/*.{ts,js,json,md}\" --ignore-path .gitignore",
+    "format:check": "prettier --check \"**/*.{ts,js,json,md}\" --ignore-path .gitignore"
   },
   "keywords": [
     "mcp",
@@ -27,7 +29,8 @@
   },
   "devDependencies": {
     "bun-types": "^1.2.19",
-    "oxlint": "^1.7.0"
+    "oxlint": "^1.7.0",
+    "prettier": "^3.6.2"
   },
   "engines": {
     "bun": ">=1.0.0"
