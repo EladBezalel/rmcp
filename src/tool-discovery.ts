@@ -18,12 +18,32 @@ export class ToolDiscovery {
 
   async discoverToolsWithMetadata(): Promise<DiscoveryResults> {
     if (!existsSync(this.toolsPath)) {
-      throw new Error(`Tools path does not exist: ${this.toolsPath}`);
+      console.warn(`⚠️  Tools path does not exist: ${this.toolsPath}`);
+      console.warn(`📂 Continuing with no ${this.source} tools loaded`);
+      return {
+        tools: [],
+        summary: {
+          total: 0,
+          global: this.source === 'global' ? 0 : 0,
+          local: this.source === 'local' ? 0 : 0,
+          conflicts: []
+        }
+      };
     }
 
     const stat = statSync(this.toolsPath);
     if (!stat.isDirectory()) {
-      throw new Error(`Tools path is not a directory: ${this.toolsPath}`);
+      console.warn(`⚠️  Tools path is not a directory: ${this.toolsPath}`);
+      console.warn(`📂 Continuing with no ${this.source} tools loaded`);
+      return {
+        tools: [],
+        summary: {
+          total: 0,
+          global: this.source === 'global' ? 0 : 0,
+          local: this.source === 'local' ? 0 : 0,
+          conflicts: []
+        }
+      };
     }
 
     const discoveredTools: DiscoveredTool[] = [];
