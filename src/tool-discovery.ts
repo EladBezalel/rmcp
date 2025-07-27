@@ -1,15 +1,22 @@
 import { existsSync, statSync, readdirSync } from 'fs';
 import { resolve, join } from 'path';
-import { Tool } from './types.js';
+import { Tool, DiscoveredTool, DiscoveryResults, ToolSource } from './types.js';
 
 export class ToolDiscovery {
   private toolsPath: string;
+  private source: ToolSource;
 
-  constructor(toolsPath: string) {
+  constructor(toolsPath: string, source: ToolSource = 'local') {
     this.toolsPath = resolve(toolsPath);
+    this.source = source;
   }
 
   async discoverTools(): Promise<Tool[]> {
+    const results = await this.discoverToolsWithMetadata();
+    return results.tools.map(dt => dt.tool);
+  }
+
+  async discoverToolsWithMetadata(): Promise<DiscoveryResults> {
     if (!existsSync(this.toolsPath)) {
       throw new Error(`Tools path does not exist: ${this.toolsPath}`);
     }
@@ -19,15 +26,15 @@ export class ToolDiscovery {
       throw new Error(`Tools path is not a directory: ${this.toolsPath}`);
     }
 
-    const tools: Tool[] = [];
+    const discoveredTools: DiscoveredTool[] = [];
     const files = readdirSync(this.toolsPath);
 
     for (const file of files) {
       if (this.isToolFile(file)) {
         try {
-          const tool = await this.loadTool(file);
-          if (tool) {
-            tools.push(tool);
+          const discoveredTool = await this.loadToolWithMetadata(file);
+          if (discoveredTool) {
+            discoveredTools.push(discoveredTool);
           }
         } catch (error) {
           console.warn(`Failed to load tool from ${file}:`, error);
@@ -35,7 +42,15 @@ export class ToolDiscovery {
       }
     }
 
-    return tools;
+    return {
+      tools: discoveredTools,
+      summary: {
+        total: discoveredTools.length,
+        global: this.source === 'global' ? discoveredTools.length : 0,
+        local: this.source === 'local' ? discoveredTools.length : 0,
+        conflicts: [] // No conflicts in single-source discovery
+      }
+    };
   }
 
   private isToolFile(filename: string): boolean {
@@ -47,6 +62,13 @@ export class ToolDiscovery {
   }
 
   private async loadTool(filename: string): Promise<Tool | null> {
+    const discoveredTool = await this.loadToolWithMetadata(filename);
+    return discoveredTool?.tool ?? null;
+  }
+
+  private async loadToolWithMetadata(
+    filename: string
+  ): Promise<DiscoveredTool | null> {
     const fullPath = join(this.toolsPath, filename);
 
     try {
@@ -74,7 +96,12 @@ export class ToolDiscovery {
         return null;
       }
 
-      return tool;
+      return {
+        tool,
+        source: this.source,
+        sourcePath: this.toolsPath,
+        filename
+      };
     } catch (error) {
       console.error(`Error loading tool from ${filename}:`, error);
       return null;

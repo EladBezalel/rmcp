@@ -31,6 +31,7 @@ By default, rmcp looks for tools in the `./rmcp-tools` directory in your current
 - `-n, --name <name>`: Server name (default: "rmcp")
 - `-s, --server-version <version>`: Server version (default: "1.0.0")
 - `-a, --addTool [toolName]`: Generate a new tool file (default: "example-tool")
+- `-g, --globalToolsPath [path]`: Use global tools directory (optional path overrides `RMCP_GLOBAL_TOOLS_PATH` env var and default)
 
 ### Examples
 
@@ -43,6 +44,12 @@ bunx @rmcp/cli ./my-tools
 
 # Start with custom name and server version
 bunx @rmcp/cli ./my-tools --name "my-server" --server-version "2.0.0"
+
+# Use global tools (from ~/.rmcp-tools by default)
+bunx @rmcp/cli -g
+
+# Use custom global tools path
+bunx @rmcp/cli -g ~/my-global-tools
 
 # Development mode
 bun run src/cli.ts
@@ -162,6 +169,19 @@ Once running, add the server to your Claude/Cursor MCP configuration:
 }
 ```
 
+### With Custom Global Folder
+
+```json
+{
+  "mcpServers": {
+    "rmcp": {
+      "command": "bunx",
+      "args": ["@rmcp/cli", "-g", "/path/to/your/global/tools/folder"]
+    }
+  }
+}
+```
+
 ## Features
 
 - ✅ **No Build Step**: TypeScript tools run directly with Bun
@@ -178,11 +198,14 @@ The `--addTool` option provides an intelligent tool generator that creates new t
 ### Basic Usage
 
 ```bash
-# Generate a tool with default name "example-tool"
+# Generate a local tool with default name "example-tool"
 bunx @rmcp/cli --addTool
 
 # Generate a tool with custom name
 bunx @rmcp/cli --addTool my-custom-tool
+
+# Generate a global tool
+bunx @rmcp/cli --addTool my-global-tool -g
 
 # Generate in specific folder
 bunx @rmcp/cli ./my-tools --addTool my-tool
@@ -239,6 +262,92 @@ The generator prevents naming conflicts:
 - Checks existing tool files in the target directory
 - Compares names case-insensitively
 - Provides clear error messages with suggestions
+
+## Global Tools Support
+
+RMCP supports global tools that can be shared across all your projects. Global tools are automatically discovered and merged with local tools, with local tools taking precedence in case of name conflicts.
+
+### Setup
+
+**Option 1: Default Location**
+
+```bash
+# Tools in ~/.rmcp-tools are automatically discovered
+bunx @rmcp/cli
+```
+
+**Option 2: Environment Variable**
+
+```bash
+# Set global tools path via environment variable
+export RMCP_GLOBAL_TOOLS_PATH=~/my-global-tools
+bunx @rmcp/cli
+```
+
+**Option 3: CLI Flag**
+
+```bash
+# Specify global tools path directly (overrides env var and default)
+bunx @rmcp/cli -g ~/custom-global-tools
+```
+
+### Automatic Discovery
+
+RMCP **always checks for global tools** and gracefully falls back to local-only discovery:
+
+- ✅ **Global directory exists** → Multi-source discovery (global + local tools)
+- ✅ **No global directory** → Single-source discovery (local tools only)
+- ✅ **Local tools override global** → Conflict resolution with local precedence
+
+### Enhanced Output
+
+When global tools are found, RMCP shows detailed source information:
+
+```bash
+🔍 Discovering tools...
+✅ Found 2 global + 3 local tools (5 total)
+   🌐 Global tools from: /Users/user/.rmcp-tools (default)
+
+📋 Tool Details:
+   🌐 Global tools:
+     • auth-helper: Authentication utility tool
+     • data-formatter: Format data in various formats
+   📁 Local tools:
+     • project-deploy: Deploy this specific project (overrides global)
+     • test-runner: Run project tests
+     • build-tool: Build project assets
+```
+
+### Global Tool Creation
+
+Create tools directly in your global directory:
+
+```bash
+# Create global tool in default location (~/.rmcp-tools)
+bunx @rmcp/cli --addTool my-global-tool -g
+
+# Create global tool in custom location
+bunx @rmcp/cli --addTool auth-helper -g ~/my-global-tools
+
+# Create global tool using environment variable path
+export RMCP_GLOBAL_TOOLS_PATH=~/shared-tools
+bunx @rmcp/cli --addTool shared-utility -g
+```
+
+The first time you create a global tool, RMCP will:
+
+1. Create the global directory if it doesn't exist
+2. **Interactively prompt** you to choose between TypeScript or CommonJS setup
+3. Initialize it as a proper Node.js project (`package.json`, `tsconfig.json` for TypeScript)
+4. **Automatically install dependencies** using your preferred package manager
+
+### Path Resolution Priority
+
+RMCP follows this precedence order for determining the global tools path:
+
+1. **CLI Flag**: `-g ~/custom-path` (highest priority)
+2. **Environment Variable**: `RMCP_GLOBAL_TOOLS_PATH=~/env-path`
+3. **Default**: `~/.rmcp-tools` (lowest priority)
 
 ## Development
 
