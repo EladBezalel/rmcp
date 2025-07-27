@@ -134,14 +134,38 @@ export class MultiSourceToolDiscovery {
 
     // Check if local directory exists
     if (!existsSync(expandedLocalPath)) {
-      throw new Error(`Local tools path does not exist: ${expandedLocalPath}`);
+      console.warn(
+        chalk.yellow(
+          `⚠️  Local tools directory not found: ${expandedLocalPath}`
+        )
+      );
+      return {
+        tools: [],
+        summary: {
+          total: 0,
+          global: 0,
+          local: 0,
+          conflicts: []
+        }
+      };
     }
 
     try {
       const localDiscovery = new ToolDiscovery(expandedLocalPath, 'local');
       return await localDiscovery.discoverToolsWithMetadata();
     } catch (error) {
-      throw new Error(`Failed to discover local tools: ${error}`);
+      console.warn(
+        chalk.yellow(`⚠️  Failed to discover local tools: ${error}`)
+      );
+      return {
+        tools: [],
+        summary: {
+          total: 0,
+          global: 0,
+          local: 0,
+          conflicts: []
+        }
+      };
     }
   }
 

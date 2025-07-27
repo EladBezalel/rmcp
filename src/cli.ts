@@ -116,13 +116,15 @@ program
 
           if (tools.length === 0) {
             console.error(
-              chalk.red('❌ No valid tools found in the specified folder')
+              chalk.yellow('⚠️  No valid tools found in the specified folder')
             );
-            process.exit(1);
+            console.error(
+              chalk.blue('🚀 Starting MCP server with no tools loaded')
+            );
+          } else {
+            // Simple output for local-only discovery
+            ToolOutputFormatter.displaySimpleToolResults(tools);
           }
-
-          // Simple output for local-only discovery
-          ToolOutputFormatter.displaySimpleToolResults(tools);
         }
 
         // Start MCP server
