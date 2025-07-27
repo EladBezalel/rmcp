@@ -9,6 +9,11 @@ import {
   mkdirSync
 } from 'fs';
 import { execSync } from 'child_process';
+import {
+  GlobalDirectoryManager,
+  type GlobalDirectoryInfo
+} from './global-directory.js';
+import { resolveGlobalToolsPath } from './path-resolver.js';
 
 // Tool name validation regex for kebab-case
 const TOOL_NAME_REGEX = /^[a-z]+(-[a-z]+)*$/;
@@ -45,6 +50,7 @@ export interface ToolGeneratorOptions {
   toolName: string;
   toolsPath: string;
   projectPath?: string;
+  isGlobal?: boolean;
 }
 
 export class ToolGenerator {
@@ -81,12 +87,18 @@ export class ToolGenerator {
   }
 
   async generateTool(options: ToolGeneratorOptions): Promise<void> {
-    const { toolName, toolsPath } = options;
+    const { toolName, toolsPath, isGlobal = false } = options;
 
     // Validate tool name
     const validatedName = this.validateToolName(toolName);
 
-    // Check for conflicts
+    // Handle global tool creation
+    if (isGlobal) {
+      await this.generateGlobalTool(validatedName, toolsPath);
+      return;
+    }
+
+    // Check for conflicts (for local tools)
     this.checkToolNameConflict(validatedName, toolsPath);
 
     // Detect project context
@@ -161,6 +173,50 @@ export class ToolGenerator {
       context.isInsideRepo
     );
     this.writeToolFile(validatedName, template, toolsPath, context);
+  }
+
+  private async generateGlobalTool(
+    toolName: string,
+    toolsPath: string
+  ): Promise<void> {
+    console.error(chalk.blue(`🌐 Generating global tool: ${toolName}`));
+
+    // Resolve global tools path
+    const globalPath = resolveGlobalToolsPath({ cliPath: toolsPath });
+
+    // Initialize global directory if needed
+    const globalManager = new GlobalDirectoryManager();
+    globalManager.validateGlobalDirectory(globalPath.path);
+
+    const globalInfo =
+      await globalManager.initializeGlobalDirectory(globalPath);
+
+    // Check for conflicts in the actual global directory
+    this.checkToolNameConflict(toolName, globalInfo.path);
+
+    // Generate appropriate template based on global directory type
+    const template = this.generateGlobalToolTemplate(toolName, globalInfo);
+
+    // Create a context for global tools
+    const globalContext: ContextInfo = {
+      isInsideRepo: false,
+      projectPath: globalInfo.path,
+      packageManager: globalInfo.packageManager,
+      hasRmcpDependency: false, // Global tools don't need rmcp/cli dependency in the same way
+      hasTypeScriptSupport: globalInfo.projectType === 'typescript'
+    };
+
+    // Create tools subdirectory within global directory
+    const toolsDir = join(globalInfo.path, 'tools');
+    this.ensureDirectoryExists(toolsDir);
+
+    this.writeToolFile(toolName, template, toolsDir, globalContext);
+
+    console.error(chalk.green(`✅ Global tool created successfully`));
+    console.error(
+      chalk.gray(`   📁 Location: ${join(globalInfo.path, 'tools')}`)
+    );
+    console.error(chalk.gray(`   📝 Type: ${globalInfo.projectType}`));
   }
 
   private detectPackageManager(projectPath: string): PackageManagerInfo | null {
@@ -453,6 +509,88 @@ const ${this.toCamelCase(toolName)} = {
   run: async (args) => {
     // Implement your tool logic here
     return \`Tool ${toolName} received: \${args.message}\`;
+  },
+};
+
+module.exports = ${this.toCamelCase(toolName)};
+`;
+  }
+
+  private generateGlobalToolTemplate(
+    toolName: string,
+    globalInfo: GlobalDirectoryInfo
+  ): string {
+    if (globalInfo.projectType === 'typescript') {
+      return this.generateGlobalTypeScriptTemplate(toolName);
+    } else {
+      return this.generateGlobalCommonJSTemplate(toolName);
+    }
+  }
+
+  private generateGlobalTypeScriptTemplate(toolName: string): string {
+    // Global tools need to import from their own dependencies or use standalone types
+    // Since global tools are independent, we'll use a standalone approach
+    return `// Global TypeScript tool for RMCP CLI
+// This tool can be used across all your RMCP projects
+
+interface ${this.toPascalCase(toolName)}Args {
+  // Define your input arguments here
+  readonly message: string;
+}
+
+interface Tool<TArgs = unknown> {
+  readonly name: string;
+  readonly description?: string;
+  readonly inputSchema: Record<string, unknown>;
+  readonly run: (args: TArgs) => Promise<string> | string;
+}
+
+const ${this.toCamelCase(toolName)}: Tool<${this.toPascalCase(toolName)}Args> = {
+  name: '${toolName}',
+  description: 'A description of what this global tool does',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      message: {
+        type: 'string',
+        description: 'An example input parameter',
+      },
+    },
+    required: ['message'],
+  },
+  run: async (args: ${this.toPascalCase(toolName)}Args): Promise<string> => {
+    // Implement your global tool logic here
+    // This tool will be available across all your RMCP projects
+    return \`Global tool ${toolName} received: \${args.message}\`;
+  },
+};
+
+// eslint-disable-next-line import/no-default-export
+export default ${this.toCamelCase(toolName)};
+`;
+  }
+
+  private generateGlobalCommonJSTemplate(toolName: string): string {
+    return `// Global CommonJS tool for RMCP CLI
+// This tool can be used across all your RMCP projects
+
+const ${this.toCamelCase(toolName)} = {
+  name: '${toolName}',
+  description: 'A description of what this global tool does',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      message: {
+        type: 'string',
+        description: 'An example input parameter',
+      },
+    },
+    required: ['message'],
+  },
+  run: async (args) => {
+    // Implement your global tool logic here
+    // This tool will be available across all your RMCP projects
+    return \`Global tool ${toolName} received: \${args.message}\`;
   },
 };
 
